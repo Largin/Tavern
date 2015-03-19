@@ -1,9 +1,10 @@
-var ENGINE = {
+var ENGINE = ENGINE || {};
+
 	/*
 	*  This code was done by ondras https://github.com/ondras/rot.js/blob/master/src/rng.js
 	*  This code is an implementation of Alea algorithm; (C) 2010 Johannes Baagøe.
 	*/
-	RAND: {
+ENGINE.RAND = {
 		_s0: 0,
 		_s1: 0,
 		_s2: 0,
@@ -76,12 +77,30 @@ var ENGINE = {
 			this._c  = state[3];
 			return this;
 		},
-	},
+	};
 
-	TIMER: {
-		time: 0,
-		events: [ENGINE.EVENT(ENGINE.events('New Day'))],
-		eventsTimes: [24],
+ENGINE.EVENT = {
+  eventsList: ['New Lair', 'Caravan arrived', 'Adventurer arrived'],
+  events: {
+                'New Day': {local: true, major: true, name: 'New Day', text: 'New day has come.'},
+                'New Lair': {local: false, major: false, name: 'New Lair', text: 'Something gone wrong.'},
+                'Caravan arrived': {local: true, major: true, name: 'Caravan arrived', text: 'Caravan with goods arrived.'},
+                'Adventurer arrived': {local: true, major: false, name: 'Adventurer arrived', text: 'Some vagabond has arrived.'},
+        },
+  newEvent: function(name){
+            var opts = ENGINE.EVENT.events[name];
+            return opts;
+  },
+  newRandomEvent: function(){
+      var i = ENGINE.RAND.getUniformInt(0, this.eventsList.length - 1);
+      return this.newEvent(this.eventsList[i]);
+  },
+};
+
+ENGINE.TIMER = {
+		time: 5,
+		events: [ENGINE.EVENT.newEvent('New Day')],
+		eventsTimes: [6],
 		putEvent: function(event, time){
 			var indx = this.events.length;
 			for (var i = 0; i < this.eventsTimes.length; i++) {
@@ -124,28 +143,12 @@ var ENGINE = {
 				for (var i = 0; i < this.eventsTimes.length; i++) {
 					this.eventsTimes[i] -= 24;
 				};
-				this.putEvent('New Day', 24);
+				this.putEvent(ENGINE.EVENT.newEvent('New Day'), 6);
 			}
 		},
-	},
-	
-	EVENT: function(opts){
-               this.local = typeof opts.local !== 'undefined' ? opts.local : true;
-               this.major = typeof opts.major !== 'undefined' ? opts.major : true;
-               this.name = typeof opts.name !== 'undefined' ? opts.name : true;
-               this.text = typeof opts.text !== 'undefined' ? opts.text : true;
-               
-               this.opts = opts;
-        },
+	};
 
-        events: {
-                'New Day': {local: true, major: true, name: 'New Day', text: 'New day has come.'},
-                'New Lair': {local: false, major: false, name: 'New Lair', text: 'Something gone wrong.'},
-                'Caravan arrived': {local: true, major: true, name: 'Caravan arrived', text: 'Caravan with goods arrived.'},
-                'Adventurer arrived': {local: true, major: false, name: 'Adventurer arrived', text: 'Some vagabond has arrived.'},
-        },
-
-        process: function(e){
+ENGINE.process = function(e){
 		var data = e.data;
 		var action = data.action
 		var ret = {};
@@ -167,20 +170,18 @@ var ENGINE = {
 				break;
 		}
 		self.postMessage(ret);
-	},
+	};
 
-	init: function(){
-		this.RAND.setSeed(Date.now());
+ENGINE.init = function(){
+		ENGINE.RAND.setSeed(Date.now());
 
-                var evs = ['New Day', 'New Lair', 'Caravan arrived', 'Adventurer arrived'];
 		for (var i = 0; i < 7; i++) {
-                         var e = this.RAND.getUniformInt(1,3);
-                         var ev = new this.EVENT(events[evs[e]])
-			this.TIMER.putEvent(ev, this.RAND.getUniformInt(1, 48));
+                         var ev = ENGINE.EVENT.newRandomEvent();
+			ENGINE.TIMER.putEvent(ev, ENGINE.RAND.getUniformInt(6, 48));
 		};
 
 		self.addEventListener('message', this.process.bind(this), false);
-	},
-}
+	};
+
 
 ENGINE.init();
