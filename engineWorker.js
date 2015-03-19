@@ -80,7 +80,7 @@ var ENGINE = {
 
 	TIMER: {
 		time: 0,
-		events: ['New Day'],
+		events: [ENGINE.EVENT(ENGINE.events('New Day'))],
 		eventsTimes: [24],
 		putEvent: function(event, time){
 			var indx = this.events.length;
@@ -128,8 +128,24 @@ var ENGINE = {
 			}
 		},
 	},
+	
+	EVENT: function(opts){
+               this.local = typeof opts.local !== 'undefined' ? opts.local : true;
+               this.major = typeof opts.major !== 'undefined' ? opts.major : true;
+               this.name = typeof opts.name !== 'undefined' ? opts.name : true;
+               this.text = typeof opts.text !== 'undefined' ? opts.text : true;
+               
+               this.opts = opts;
+        },
 
-	process: function(e){
+        events: {
+                'New Day': {local: true, major: true, name: 'New Day', text: 'New day has come.'},
+                'New Lair': {local: false, major: false, name: 'New Lair', text: 'Something gone wrong.'},
+                'Caravan arrived': {local: true, major: true, name: 'Caravan arrived', text: 'Caravan with goods arrived.'},
+                'Adventurer arrived': {local: true, major: false, name: 'Adventurer arrived', text: 'Some vagabond has arrived.'},
+        },
+
+        process: function(e){
 		var data = e.data;
 		var action = data.action
 		var ret = {};
@@ -156,8 +172,11 @@ var ENGINE = {
 	init: function(){
 		this.RAND.setSeed(Date.now());
 
+                var evs = ['New Day', 'New Lair', 'Caravan arrived', 'Adventurer arrived'];
 		for (var i = 0; i < 7; i++) {
-			this.TIMER.putEvent(i, this.RAND.getUniformInt(1, 48));
+                         var e = this.RAND.getUniformInt(1,3);
+                         var ev = new this.EVENT(events[evs[e]])
+			this.TIMER.putEvent(ev, this.RAND.getUniformInt(1, 48));
 		};
 
 		self.addEventListener('message', this.process.bind(this), false);
