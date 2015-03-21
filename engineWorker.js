@@ -115,7 +115,7 @@ ENGINE.EVENT = {
 		},
 	},
 	newEvent: function(name) {
-		var opts = ENGINE.EVENT.events[name];
+		var opts = this.events[name];
 		return clone(opts);
 	},
 	newRandomEvent: function() {
@@ -127,16 +127,28 @@ ENGINE.EVENT = {
 ENGINE.TIMER = {
 	time: 5,
 	day: 1,
+
 	events: [ENGINE.EVENT.newEvent('New Day')],
-	minorQueue: [],
 	eventsTimes: [6],
+
+	minorQueue: [],
+
+	checkDay: function() {
+		if (this.time == 24) {
+			this.time = 0;
+			this.day++;
+			for (var i = 0; i < this.eventsTimes.length; i++) {
+				this.eventsTimes[i] -= 24;
+			};
+		}
+	},
 	putEvent: function(event, time) {
 		var indx = this.events.length;
 		for (var i = 0; i < this.eventsTimes.length; i++) {
 			if (this.eventsTimes[i] > time) {
 				indx = i;
 				break;
-			}
+			};
 		};
 
 		this.eventsTimes.splice(indx, 0, time);
@@ -169,14 +181,14 @@ ENGINE.TIMER = {
 			} else {
 				ret.push(doing[i]);
 			}
-		};
 
-		if (this.getMinors) {
-			for (var i = 0; i < this.minorQueue.length; i++) {
-				ret.push(this.minorQueue[i]);
-			};
-			this.minorQueue = [];
-		}
+			if (doing[i].getMinors) {
+				for (var i = 0; i < this.minorQueue.length; i++) {
+					ret.push(this.minorQueue[i]);
+				};
+				this.minorQueue = [];
+			}
+		};
 
 		this.checkDay();
 		return ret;
@@ -189,24 +201,40 @@ ENGINE.TIMER = {
 		return ret;
 	},
 	getTime: function() {
-		return this.time;
-	},
-	checkDay: function() {
-		if (this.time == 24) {
-			this.time = 0;
-			this.day++;
-			for (var i = 0; i < this.eventsTimes.length; i++) {
-				this.eventsTimes[i] -= 24;
-			};
-			//this.putEvent(ENGINE.EVENT.newEvent('New Day'), 6);
-		}
+		return {
+			d: this.day,
+			t: this.time
+		};
 	},
 	getEventsTimes: function() {
 		var ret = {};
 		for (var i = 0; i < this.eventsTimes.length; i++) {
-			ret[this.eventsTimes[i]] = this.events[i].name;
+			if (!ret[this.eventsTimes[i]])
+				ret[this.eventsTimes[i]] = [];
+			ret[this.eventsTimes[i]].push(this.events[i].name);
 		};
 		return ret;
+	},
+};
+
+ENGINE.WORLD = {};
+
+ENGINE.WORLD.TAVERN = {
+	gold: 0,
+	supplies: {},
+	guests: {
+		caravans: {},
+		adventurers: {},
+		locals: {},
+	},
+	workers: {
+		stableboy: 'Larry',
+		blacksmith: 'John',
+		wench: 'Amelia',
+		housewife: 'Aghata',
+		owner: 'Largin',
+		daughter: 'Aegia',
+		son: 'Gustaf',
 	},
 };
 
