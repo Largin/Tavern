@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<title>Small tavern</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+	<script>
+	GAME = {
+		Time: 1,
+		Danger: 0,
+	};
+	GAME.RAND = {
+		_s0: 0,
+		_s1: 0,
+		_s2: 0,
+		_c: 0,
+		_frac: 2.3283064365386963e-10,
+		/* 2^-32 */
+		getSeed: function() {
+			return this._seed;
+		},
+		setSeed: function(seed) {
+			seed = (seed < 1 ? 1 / seed : seed);
+			this._seed = seed;
+			this._s0 = (seed >>> 0) * this._frac;
+			seed = (seed * 69069 + 1) >>> 0;
+			this._s1 = seed * this._frac;
+			seed = (seed * 69069 + 1) >>> 0;
+			this._s2 = seed * this._frac;
+			this._c = 1;
+			return this;
+		},
+		getUniform: function() {
+			var t = 2091639 * this._s0 + this._c * this._frac;
+			this._s0 = this._s1;
+			this._s1 = this._s2;
+			this._c = t | 0;
+			this._s2 = t - this._c;
+			return this._s2;
+		},
+		getUniformInt: function(lowerBound, upperBound) {
+			var max = Math.max(lowerBound, upperBound);
+			var min = Math.min(lowerBound, upperBound);
+			return Math.floor(this.getUniform() * (max - min + 1)) + min;
+		},
+		getNormal: function(mean, stddev) {
+			do {
+				var u = 2 * this.getUniform() - 1;
+				var v = 2 * this.getUniform() - 1;
+				var r = u * u + v * v;
+			} while (r > 1 || r == 0);
+
+			var gauss = u * Math.sqrt(-2 * Math.log(r) / r);
+			return (mean || 0) + gauss * (stddev || 1);
+		},
+		getPercentage: function() {
+			return 1 + Math.floor(this.getUniform() * 100);
+		},
+		getWeightedValue: function(data) {
+			var avail = [];
+			var total = 0;
+
+			for (var id in data) {
+				total += data[id];
+			}
+			var random = Math.floor(this.getUniform() * total);
+
+			var part = 0;
+			for (var id in data) {
+				part += data[id];
+				if (random < part) {
+					return id;
+				}
+			}
+
+			return null;
+		},
+		getState: function() {
+			return [this._s0, this._s1, this._s2, this._c];
+		},
+		setState: function(state) {
+			this._s0 = state[0];
+			this._s1 = state[1];
+			this._s2 = state[2];
+			this._c = state[3];
+			return this;
+		},
+	};
+	GAME.ADVENTURER = {
+
+	};
+	GAME.MONSTER = {
+		Bandits: {
+			Name: 'Bandits',
+			Count: function(size){
+				var n = GAME.RAND.getNormal(4, 2);
+				this.Count = Math.max(1, Math.round(n * size));
+			},
+			Danger: function(){
+				var danger = 0;
+				for (var i = 0; i < this.Count; i++) {
+					danger += Math.max(0.7, GAME.RAND.getNormal(2.5, 2));
+				};
+				return danger;
+			},
+		},
+		Goblins: {
+			Name: 'Goblins',
+			Count: function(size){
+				var n = GAME.RAND.getNormal(12, 4);
+				this.Count = Math.max(1, Math.round(n * size));
+			},
+			Danger: function(){
+				var danger = 0;
+				for (var i = 0; i < this.Count; i++) {
+					danger += Math.max(0.1, GAME.RAND.getNormal(1, 1));
+				};
+				return danger;
+			},
+		},
+		Orcs: {
+			Name: 'Orcs',
+			Count: function(size){
+				var n = GAME.RAND.getNormal(4, 2);
+				this.Count = Math.max(1, Math.round(n * size));
+			},
+			Danger: function(){
+				var danger = 0;
+				for (var i = 0; i < this.Count; i++) {
+					danger += Math.max(1.5, GAME.RAND.getNormal(3.5, 2));
+				};
+				return danger;
+			},
+		}
+	};
+	GAME.LAIR = {
+		Type: ['Village', 'Cave', 'Hideout'],
+		Types: {
+			Village: {
+				Type: 'Village',
+				Size: {Min: 1, Max: 3, Mean: 1.5, Dev: 1},
+				Monsters: [
+					{Chance: 3, Types: {Goblins: 1}},
+					{Chance: 1, Types: {Orcs: 1}},
+					{Chance: 1, Types: {Goblins: 0.5, Orcs: 0.5}}
+				],
+				Profit: 0.5,
+			},
+			Cave: {
+				Type: 'Cave',
+				Size: {Min: 1, Max: 8, Mean: 2.5, Dev: 2.5},
+				Monsters: [
+					{Chance: 3, Types: {Goblins: 1}},
+					{Chance: 1, Types: {Orcs: 1}},
+					{Chance: 1, Types: {Goblins: 0.5, Orcs: 0.5}}
+				],
+				Profit: 1.2,
+			},
+			Hideout: {
+				Type: 'Hideout',
+				Size: {Min: 1, Max: 3, Mean: 1.5, Dev: 1},
+				Monsters: [
+					{Chance: 1, Types: {Bandits: 1}},
+				],
+				Profit: 1,
+			},
+		},
+		LairPrototype: {
+			getSize: function(newSize){
+				var size = 0;
+				if(newSize){
+					size = Math.max(Math.min(this.Size.Max, Math.round(newSize)), this.Size.Min);
+				}	else if(this.Size.Mean && this.Size.Dev){
+					size = GAME.RAND.getNormal(this.Size.Mean, this.Size.Dev);
+					size = Math.max(Math.min(this.Size.Max, Math.round(size)), this.Size.Min);
+				} else {
+					size = GAME.RAND.getUniformInt(this.Size.Min, this.Size.Max);
+				}
+				this.Size = size
+			},
+			getMonsters: function(){
+				var monsterKind = [], monsters = [];
+				for (var i = 0; i < this.Monsters.length; i++) {
+					for (var j = 0; j < this.Monsters[i].Chance; j++) {
+						monsterKind.push(this.Monsters[i]);
+					};
+				};
+				monsterKind = monsterKind.random();
+				for(var key in monsterKind.Types){
+					var monster = clone(GAME.MONSTER[key]);
+					monster.Count(this.Size * monsterKind.Types[key]);
+					monsters.push(monster);
+				}
+				this.Monsters = monsters;
+			},
+		},
+		Lairs: [],
+
+		create: function(newSize){
+			var typeI = this.Type.random();
+			var type = clone(this.Types[typeI]);
+			type.__proto__ = this.LairPrototype;
+
+			type.getSize(newSize);
+			type.getMonsters();
+
+/*
+			monsters = [];
+			var danger = 0;
+			for(var key in type.Monsters.Types){
+				var monster = clone(GAME.MONSTER[key]);
+				monster.Count(type.Size * type.Monsters.Types[key]);
+				danger += Math.round(monster.Danger());
+				monsters.push(monster);
+			}
+			type.Danger = danger;
+			type.Monsters = monsters;
+*/
+			type.tbody = $('#lairs > tbody.tmpl').clone().removeClass();
+			type.tbody.children('tr.info').children().each(function(idx, val){
+				switch(idx){
+					case 0: $(this).text(type.Type); break;
+					case 1: $(this).text(type.Size); break;
+					case 2:
+						var monsterT = '';
+						for (var i = 0; i < type.Monsters.length; i++) {
+							monsterT += type.Monsters[i].Name + ', ';
+						};
+						$(this).text(monsterT);
+						break;
+					case 3: $(this).text(type.Danger); break;
+				}
+			});
+			$('#lairs').append(type.tbody);
+			this.Lairs.push(type);
+		}
+	};
+
+	GAME.Tick = function(){
+		this.Time++;
+		this.CalculateDanger();
+		$('#StatusDanger').text(this.Danger);
+	};
+
+	GAME.CalculateDanger = function(){
+		var dangers = 0;
+		for (var i = 0; i < this.LAIR.Lairs.length; i++) {
+			dangers += this.LAIR.Lairs[i].Danger;
+		};
+		this.Danger += Math.ceil((dangers - this.Danger) / 10);
+	}
+
+	Array.prototype.random = function() {
+		if (!this.length) { return null; }
+		return this[Math.floor(GAME.RAND.getUniform() * this.length)];
+	};
+
+	function clone(obj) {
+		var copy;
+
+		// Handle the 3 simple types, and null or undefined
+		if (null == obj || "object" != typeof obj) return obj;
+
+		// Handle Date
+		if (obj instanceof Date) {
+			copy = new Date();
+			copy.setTime(obj.getTime());
+			return copy;
+		}
+
+		// Handle Array
+		if (obj instanceof Array) {
+			copy = [];
+			for (var i = 0, len = obj.length; i < len; i++) {
+				copy[i] = clone(obj[i]);
+			}
+			return copy;
+		}
+
+		// Handle Object
+		if (obj instanceof Object) {
+			copy = {};
+			for (var attr in obj) {
+				if (obj.hasOwnProperty(attr)) copy[attr] = clone(obj[attr]);
+			}
+			return copy;
+		}
+
+		throw new Error("Unable to copy obj! Its type isn't supported.");
+	};
+
+	$(function(){
+		console.log('init');
+		GAME.RAND.setSeed(Date.now());
+		GAME.LAIR.create(1);
+		GAME.LAIR.create(1);
+		GAME.LAIR.create(2);
+		console.log(GAME);
+		GAME.Tick();
+	});
+	</script>
+	<style type="text/css">
+	.tmpl {
+		display: none;
+	}
+	</style>
+</head>
+<body>
+	<div class="container-fluid">
+		<div class="row">
+			<div class="col-md-2">
+				<div class="panel panel-success">
+					<div class="panel-heading">Tavern</div>
+					<table class="table">
+						<tr>
+							<th>
+								What
+							</th>
+							<th>
+								How much
+							</th>
+							<th>
+								Choose
+							</th>
+						</tr>
+						<tr>
+							<td>
+								Adventurers
+							</td>
+							<td>
+								0
+							</td>
+							<td>
+								<div class="btn-group btn-group-xs" role="group">
+									<button class="btn btn-default btn-xs" class="sub1" type="button">-1</button>
+									<button class="btn btn-default btn-xs" class="add1" type="button">+1</button>
+								</div>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+			<div class="col-md-2">
+				<div class="panel panel-primary">
+					<div class="panel-heading">Status</div>
+					<table class="table">
+						<tr>
+							<th>
+								What
+							</th>
+							<th>
+								How much
+							</th>
+						</tr>
+						<tr>
+							<td>
+								Danger
+							</td>
+							<td id="StatusDanger">
+								0
+							</td>
+						</tr>
+						<tr>
+							<td>
+								Profit
+							</td>
+							<td id="StatusProfit">
+								0
+							</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+			<div class="col-md-4">
+				<div class="panel panel-warning">
+					<div class="panel-heading">Party</div>
+				</div>
+			</div>
+			<div class="col-md-4">
+				<div class="panel panel-danger">
+					<div class="panel-heading">Lairs</div>
+					<table class="table" id="lairs">
+						<thead>
+							<tr>
+								<th>
+									Type
+								</th>
+								<th>
+									Size
+								</th>
+								<th>
+									Monsters
+								</th>
+								<th>
+									Danger
+								</th>
+							</tr>
+						</thead>
+						<tbody class="tmpl">
+							<tr class="info">
+								<td></td><td></td><td></td><td></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

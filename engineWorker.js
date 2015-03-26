@@ -99,7 +99,12 @@ ENGINE.EVENT = {
 			local: false,
 			major: false,
 			name: 'New Lair',
-			text: 'Something gone wrong.'
+			text: 'Something gone wrong.',
+			func: function(){
+				var lair = new ENGINE.LAIR();
+				this.text = lair.appearText();
+				ENGINE.WORLD.LAIRS.Active.push(lair);
+			},
 		},
 		'Caravan arrived': {
 			local: true,
@@ -217,7 +222,26 @@ ENGINE.TIMER = {
 	},
 };
 
+ENGINE.LAIR = function(){
+	this.race = 'human';
+	this.enemy = 'bandit';
+	this.type = 'hideout';
+	this.many = ENGINE.RAND.getUniformInt(1,3);
+	this.diff = this.many * ENGINE.RAND.getUniformInt(1,3);
+
+	return this;
+}
+
+ENGINE.LAIR.prototype.appearText = function() {
+	return 'Some '+this.race+' '+this.enemy+(this.many==1?'':'s')+' holed up in some '+this.enemy+' '+this.type+'.';
+};
+
 ENGINE.WORLD = {};
+
+ENGINE.WORLD.LAIRS = {
+	Active: [],
+	Closed: [],
+};
 
 ENGINE.WORLD.TAVERN = {
 	gold: 0,
@@ -255,6 +279,7 @@ ENGINE.process = function(e) {
 			}
 			ret.time = this.TIMER.getTime();
 			ret.debug = this.TIMER.getEventsTimes();
+			ret.world = this.WORLD;
 			break;
 		default:
 			break;
