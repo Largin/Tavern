@@ -97,48 +97,36 @@
 	};
 	GAME.MONSTER = {
 		Bandits: {
-			Name: 'Bandits',
-			Count: function(size){
-				var n = GAME.RAND.getNormal(4, 2);
-				this.Count = Math.max(1, Math.round(n * size));
-			},
-			Danger: function(){
-				var danger = 0;
-				for (var i = 0; i < this.Count; i++) {
-					danger += Math.max(0.7, GAME.RAND.getNormal(2.5, 2));
-				};
-				return danger;
-			},
+			Name: 'Bandit',
+			_count: {Mean: 4, Dev: 2},
+			_danger: {Min: 0.7, Mean: 2.5, Dev: 2},
 		},
 		Goblins: {
 			Name: 'Goblins',
-			Count: function(size){
-				var n = GAME.RAND.getNormal(12, 4);
-				this.Count = Math.max(1, Math.round(n * size));
-			},
-			Danger: function(){
-				var danger = 0;
-				for (var i = 0; i < this.Count; i++) {
-					danger += Math.max(0.1, GAME.RAND.getNormal(1, 1));
-				};
-				return danger;
-			},
+			Count: 0,
+			_count: {Mean: 12, Dev: 4},
+			_danger: {Min: 0.1, Mean: 1, Dev: 1}
 		},
 		Orcs: {
 			Name: 'Orcs',
-			Count: function(size){
-				var n = GAME.RAND.getNormal(4, 2);
+			Count: 0,
+			_count: {Mean: 4, Dev: 2},
+			_danger: {Min: 1.5, Mean: 3.5, Dev: 2},
+		},
+		MonsterProto: {
+			getCount: function(size){
+				var n = GAME.RAND.getNormal(this._count.Mean, this._count.Dev);
 				this.Count = Math.max(1, Math.round(n * size));
 			},
-			Danger: function(){
-				var danger = 0;
+			getDanger: function(){
+				this.Danger = 0;
 				for (var i = 0; i < this.Count; i++) {
-					danger += Math.max(1.5, GAME.RAND.getNormal(3.5, 2));
+					this.Danger += Math.max(this._danger.Min, GAME.RAND.getNormal(this._danger.Mean, this._danger.Dev));
 				};
-				return danger;
-			},
+			}
 		}
 	};
+
 	GAME.LAIR = {
 		Type: ['Village', 'Cave', 'Hideout'],
 		Types: {
@@ -194,11 +182,20 @@
 				monsterKind = monsterKind.random();
 				for(var key in monsterKind.Types){
 					var monster = clone(GAME.MONSTER[key]);
-					monster.Count(this.Size * monsterKind.Types[key]);
+					monster.__proto__ = GAME.MONSTER.MonsterProto;
+					monster.getCount(this.Size * monsterKind.Types[key]);
 					monsters.push(monster);
 				}
 				this.Monsters = monsters;
 			},
+			getDanger: function(){
+				this.Danger = 0;
+				for (var i = 0; i < this.Monsters.length; i++) {
+					this.Monsters[i].getDanger();
+					this.Danger += this.Monsters[i].Danger;
+				};
+				this.Danger = Math.round(this.Danger);
+			}
 		},
 		Lairs: [],
 
@@ -209,19 +206,8 @@
 
 			type.getSize(newSize);
 			type.getMonsters();
+			type.getDanger();
 
-/*
-			monsters = [];
-			var danger = 0;
-			for(var key in type.Monsters.Types){
-				var monster = clone(GAME.MONSTER[key]);
-				monster.Count(type.Size * type.Monsters.Types[key]);
-				danger += Math.round(monster.Danger());
-				monsters.push(monster);
-			}
-			type.Danger = danger;
-			type.Monsters = monsters;
-*/
 			type.tbody = $('#lairs > tbody.tmpl').clone().removeClass();
 			type.tbody.children('tr.info').children().each(function(idx, val){
 				switch(idx){
