@@ -59,6 +59,17 @@
 			var gauss = u * Math.sqrt(-2 * Math.log(r) / r);
 			return (mean || 0) + gauss * (stddev || 1);
 		},
+		getComplex: function(params) {
+			var ret = 0;
+			if(params.Mean && params.Dev) {
+				ret = this.getNormal(params.Mean, params.Dev);
+				if(params.Min) ret = Math.max(ret, params.Min);
+				if(params.Max) ret = Math.min(ret, params.Max);
+			} else if(params.Min && params.Max) {
+				ret = this.getUniformInt(params.Min, params.Max);
+			}
+			return ret;
+		},
 		getPercentage: function() {
 			return 1 + Math.floor(this.getUniform() * 100);
 		},
@@ -93,35 +104,50 @@
 		},
 	};
 	GAME.ADVENTURER = {
-
+		Types: {
+			Adventurer: {
+				Name: 'Adventurer',
+				Skill: 0,
+				_skill: {Min: 1, Max: 7, Mean: 2.5, Dev: 2},
+				_fame: {Min:1, Max: 12, Mean:1, Dev: 4},
+				_gold: {Min:5, Mean: 15, Dev: 5}
+			},
+		},
+		Proto: {
+			init: function(){
+				this.Fame = GAME.RAND.getComplex(this._fame);
+				this.Skill = GAME.RAND.getComplex(this._skill) + this.Fame;
+			}
+		},
 	};
 	GAME.MONSTER = {
-		Bandits: {
-			Name: 'Bandit',
-			_count: {Mean: 4, Dev: 2},
-			_danger: {Min: 0.7, Mean: 2.5, Dev: 2},
-		},
-		Goblins: {
-			Name: 'Goblins',
-			Count: 0,
-			_count: {Mean: 12, Dev: 4},
-			_danger: {Min: 0.1, Mean: 1, Dev: 1}
-		},
-		Orcs: {
-			Name: 'Orcs',
-			Count: 0,
-			_count: {Mean: 4, Dev: 2},
-			_danger: {Min: 1.5, Mean: 3.5, Dev: 2},
+		Types: {
+			Bandits: {
+				Name: 'Bandit',
+				_count: {Mean: 4, Dev: 2},
+				_danger: {Min: 0.7, Mean: 2.5, Dev: 2},
+			},
+			Goblins: {
+				Name: 'Goblins',
+				Count: 0,
+				_count: {Mean: 12, Dev: 4},
+				_danger: {Min: 0.1, Mean: 1, Dev: 1}
+			},
+			Orcs: {
+				Name: 'Orcs',
+				Count: 0,
+				_count: {Mean: 4, Dev: 2},
+				_danger: {Min: 1.5, Mean: 3.5, Dev: 2},
+			},
 		},
 		MonsterProto: {
 			getCount: function(size){
-				var n = GAME.RAND.getNormal(this._count.Mean, this._count.Dev);
-				this.Count = Math.max(1, Math.round(n * size));
+				this.Count = Math.round(size * GAME.RAND.getComplex(this._count));
 			},
 			getDanger: function(){
 				this.Danger = 0;
 				for (var i = 0; i < this.Count; i++) {
-					this.Danger += Math.max(this._danger.Min, GAME.RAND.getNormal(this._danger.Mean, this._danger.Dev));
+					this.Danger += GAME.RAND.getComplex(this._danger);
 				};
 			}
 		}
@@ -164,13 +190,10 @@
 				var size = 0;
 				if(newSize){
 					size = Math.max(Math.min(this.Size.Max, Math.round(newSize)), this.Size.Min);
-				}	else if(this.Size.Mean && this.Size.Dev){
-					size = GAME.RAND.getNormal(this.Size.Mean, this.Size.Dev);
-					size = Math.max(Math.min(this.Size.Max, Math.round(size)), this.Size.Min);
-				} else {
-					size = GAME.RAND.getUniformInt(this.Size.Min, this.Size.Max);
+				}	else {
+					size = Math.round(GAME.RAND.getComplex(this.Size));
 				}
-				this.Size = size
+				this.Size = size;
 			},
 			getMonsters: function(){
 				var monsterKind = [], monsters = [];
@@ -181,7 +204,7 @@
 				};
 				monsterKind = monsterKind.random();
 				for(var key in monsterKind.Types){
-					var monster = clone(GAME.MONSTER[key]);
+					var monster = clone(GAME.MONSTER.Types[key]);
 					monster.__proto__ = GAME.MONSTER.MonsterProto;
 					monster.getCount(this.Size * monsterKind.Types[key]);
 					monsters.push(monster);
