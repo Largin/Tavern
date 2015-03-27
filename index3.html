@@ -185,7 +185,7 @@ GAME.ADVENTURERS = {
 GAME.PARTY = {
 	Party: {
 		Heros: [],
-		Way: 'Force',
+		Loot: 0,
 	},
 	Proto: {
 		Skill: function(){
@@ -194,6 +194,15 @@ GAME.PARTY = {
 			};
 			return skill;
 		},
+		Return: function(success){
+			var loot = this.Loot / this.Heros.length;
+			for (var i = 0; i < this.Heros.length; i++) {
+				this.Heros[i].Gold += loot;
+				this.Heros[i].Fame += loot/100;
+				this.Heros[i].Fame += success;
+				GAME.Tavern.Adventurers.push(this.Heros[i]);
+			};
+		}
 	}
 };
 GAME.MONSTERS = {
@@ -320,11 +329,16 @@ GAME.LAIRS = {
 			if(this.Party === null) return;
 			var pow = this.Party.Skill() / this.Danger();
 
-			if(pow < 0.5){
-				this.Party.Return();
+			this.Party.Return(false);
+			this.Party = null;
+
+			if(pow < 1){
+				this.Party.Return(false);
 				this.Party = null;
 			} else {
-				// bruteForce
+				this.Party.Return(true);
+				this.Party = null;
+				this.Destroyed = true;
 			}
 		}
 	},
