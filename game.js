@@ -5,6 +5,24 @@ GAME = {
 GAME.Tavern = {
 	Adventurers: [],
 	Party: null,
+
+	RedrawTable: function(){
+		$('#TavernAdventurersCount').text(this.Adventurers.length);
+		var TA = $('#TavernAdventurers').empty();
+		for(var hero of this.Adventurers){
+			var tr = $(document.createElement('tr'));
+			tr.attr('draggable', true);
+			var td = $(document.createElement('td')).append($('#icon-ace').clone().removeAttr('id')).appendTo(tr);
+			td = $(document.createElement('td')).text(hero.Name).appendTo(tr);
+			td = $(document.createElement('td')).text(Math.round(hero.Skill)).appendTo(tr);
+			TA.append(tr);
+		};
+
+		$('#TavernAdventurers>tr').on('dragstart', 	function(ev) {
+			dragIcon = $('td>div>svg', $(ev.originalEvent.target))[0];
+			ev.originalEvent.dataTransfer.setDragImage(dragIcon, -10, -10);
+		});
+	},
 };
 GAME.UTIL = {
 	RandomArray: function(arr){
@@ -169,6 +187,7 @@ GAME.ADVENTURERS = {
 		var hero = this.getRandomType();
 		hero.init();
 		GAME.Tavern.Adventurers.push(hero);
+		GAME.Tavern.RedrawTable();
 	}
 };
 GAME.PARTY = {
