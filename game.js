@@ -1,25 +1,136 @@
-GAME = {
-	Lairs: [],
-	Parties: [],
+'use strict';
+
+var GAMEE = {};
+
+GAMEE.ENGINE = {};
+GAMEE.ENGINE.UTIL = {
+	RandomArray: function(arr){
+		if (!arr.length) { return null; }
+		return arr[Math.floor(GAME.RAND.getUniform() * arr.length)];
+	},
+};
+GAMEE.ENGINE.RAND = {
+	_s0: 0,
+	_s1: 0,
+	_s2: 0,
+	_c: 0,
+	_frac: 2.3283064365386963e-10,
+	/* 2^-32 */
+	getSeed: function() {return this._seed;},
+	setSeed: function(seed) {
+		seed = (seed < 1 ? 1 / seed : seed);
+		this._seed = seed;
+		this._s0 = (seed >>> 0) * this._frac;
+		seed = (seed * 69069 + 1) >>> 0;
+		this._s1 = seed * this._frac;
+		seed = (seed * 69069 + 1) >>> 0;
+		this._s2 = seed * this._frac;
+		this._c = 1;
+		return this;
+	},
+	getUniform: function() {
+		let t = 2091639 * this._s0 + this._c * this._frac;
+		this._s0 = this._s1;
+		this._s1 = this._s2;
+		this._c = t | 0;
+		this._s2 = t - this._c;
+		return this._s2;
+	},
+	getUniformInt: function(lowerBound, upperBound) {
+		let max = Math.max(lowerBound, upperBound);
+		let min = Math.min(lowerBound, upperBound);
+		return Math.floor(this.getUniform() * (max - min + 1)) + min;
+	},
+	getNormal: function(mean, stddev) {
+		do {
+			var u = 2 * this.getUniform() - 1;
+			var v = 2 * this.getUniform() - 1;
+			var r = u * u + v * v;
+		} while (r > 1 || r == 0);
+
+		let gauss = u * Math.sqrt(-2 * Math.log(r) / r);
+		return (mean || 0) + gauss * (stddev || 1);
+	},
+	getComplex: function(params) {
+		let ret = 0;
+		if(params.Mean && params.Dev) {
+			ret = this.getNormal(params.Mean, params.Dev);
+			if(params.Min) ret = Math.max(ret, params.Min);
+			if(params.Max) ret = Math.min(ret, params.Max);
+		} else if(params.Min && params.Max) {
+			ret = this.getUniformInt(params.Min, params.Max);
+		}
+		if(params.add) {
+			ret + params.add;
+		}
+		return ret;
+	},
+	getPercentage: function() {return 1 + Math.floor(this.getUniform() * 100);},
+	getWeightedValue: function(data) {
+		let avail = [];
+		let total = 0;
+
+		for (let id in data) {
+			total += data[id];
+		}
+		let random = Math.floor(this.getUniform() * total);
+
+		let part = 0;
+		for (let id in data) {
+			part += data[id];
+			if (random < part) {
+				return id;
+			}
+		}
+
+		return null;
+	},
+	getState: function() {return [this._s0, this._s1, this._s2, this._c];},
+	setState: function(state) {
+		this._s0 = state[0];
+		this._s1 = state[1];
+		this._s2 = state[2];
+		this._c = state[3];
+		return this;
+	},
+};
+GAMEE.ENGINE.LAIR = {
+	create: function(){
+		let newLair = Object.create(this.Proto);
+		let x;
+		console.log([newLair, this.Types, new Array(this.Types.entries())]);
+		return newLair;
+	},
+	Types: new Set([1,2,3,4]),
+	Proto: {
+	},
+};
+
+
+
+var GAME = {
+	Lairs: new Set(),
+	Parties: new Set(),
 };
 GAME.Tavern = {
-	Adventurers: [],
+	Adventurers: new Set(),
 	Party: null,
 
 	RedrawTable: function(){
 		$('#TavernAdventurersCount').text(this.Adventurers.length);
-		var TA = $('#TavernAdventurers').empty();
-		for(var hero of this.Adventurers){
-			var tr = $(document.createElement('tr'));
+		let TA = $('#TavernAdventurers').empty();
+		for(let hero of this.Adventurers){
+			let tr = $(document.createElement('tr'));
 			tr.attr('draggable', true);
-			var td = $(document.createElement('td')).append($('#icon-ace').clone().removeAttr('id')).appendTo(tr);
+			let td = $(document.createElement('td')).append($('#icon-ace').clone().removeAttr('id')).appendTo(tr);
 			td = $(document.createElement('td')).text(hero.Name).appendTo(tr);
 			td = $(document.createElement('td')).text(Math.round(hero.Skill)).appendTo(tr);
 			TA.append(tr);
+			tr[0].Hero = hero;
 		};
 
 		$('#TavernAdventurers>tr').on('dragstart', 	function(ev) {
-			dragIcon = $('td>div>svg', $(ev.originalEvent.target))[0];
+			let dragIcon = $('td>div>svg', $(ev.originalEvent.target))[0];
 			ev.originalEvent.dataTransfer.setDragImage(dragIcon, -10, -10);
 		});
 	},
@@ -30,7 +141,7 @@ GAME.UTIL = {
 		return arr[Math.floor(GAME.RAND.getUniform() * arr.length)];
 	},
 	ObjectClone: function(obj){
-		var copy;
+		let copy;
 
 		if (null == obj || "object" != typeof obj) return obj;
 
@@ -42,7 +153,7 @@ GAME.UTIL = {
 
 		if (obj instanceof Array) {
 			copy = [];
-			for (var i = 0, len = obj.length; i < len; i++) {
+			for (let i = 0, len = obj.length; i < len; i++) {
 				copy[i] = this.ObjectClone(obj[i]);
 			}
 			return copy;
@@ -50,7 +161,7 @@ GAME.UTIL = {
 
 		if (obj instanceof Object) {
 			copy = {};
-			for (var attr in obj) {
+			for (let attr in obj) {
 				if (obj.hasOwnProperty(attr)) copy[attr] = this.ObjectClone(obj[attr]);
 			}
 			return copy;
@@ -81,7 +192,7 @@ GAME.RAND = {
 		return this;
 	},
 	getUniform: function() {
-		var t = 2091639 * this._s0 + this._c * this._frac;
+		let t = 2091639 * this._s0 + this._c * this._frac;
 		this._s0 = this._s1;
 		this._s1 = this._s2;
 		this._c = t | 0;
@@ -89,8 +200,8 @@ GAME.RAND = {
 		return this._s2;
 	},
 	getUniformInt: function(lowerBound, upperBound) {
-		var max = Math.max(lowerBound, upperBound);
-		var min = Math.min(lowerBound, upperBound);
+		let max = Math.max(lowerBound, upperBound);
+		let min = Math.min(lowerBound, upperBound);
 		return Math.floor(this.getUniform() * (max - min + 1)) + min;
 	},
 	getNormal: function(mean, stddev) {
@@ -100,11 +211,11 @@ GAME.RAND = {
 			var r = u * u + v * v;
 		} while (r > 1 || r == 0);
 
-		var gauss = u * Math.sqrt(-2 * Math.log(r) / r);
+		let gauss = u * Math.sqrt(-2 * Math.log(r) / r);
 		return (mean || 0) + gauss * (stddev || 1);
 	},
 	getComplex: function(params) {
-		var ret = 0;
+		let ret = 0;
 		if(params.Mean && params.Dev) {
 			ret = this.getNormal(params.Mean, params.Dev);
 			if(params.Min) ret = Math.max(ret, params.Min);
@@ -118,16 +229,16 @@ GAME.RAND = {
 		return 1 + Math.floor(this.getUniform() * 100);
 	},
 	getWeightedValue: function(data) {
-		var avail = [];
-		var total = 0;
+		let avail = [];
+		let total = 0;
 
-		for (var id in data) {
+		for (let id in data) {
 			total += data[id];
 		}
-		var random = Math.floor(this.getUniform() * total);
+		let random = Math.floor(this.getUniform() * total);
 
-		var part = 0;
-		for (var id in data) {
+		let part = 0;
+		for (let id in data) {
 			part += data[id];
 			if (random < part) {
 				return id;
@@ -164,14 +275,15 @@ GAME.ADVENTURERS = {
 		}
 	},
 	getRandomType: function(){
-		var newHeroP = GAME.UTIL.ObjectClone(GAME.UTIL.RandomArray(this.Types));
+		let newHeroP = GAME.UTIL.ObjectClone(GAME.UTIL.RandomArray(this.Types));
 		newHeroP.__proto__ = this.Proto;
-		newHero = {};
+		let newHero = {};
 		newHero.__proto__ = newHeroP;
 		return newHero;
 	},
 	getType: function(name){
-		for (var i = 0, ret; i < this.Types.length; i++) {
+		let ret;
+		for (let i = 0; i < this.Types.length; i++) {
 			if(this.Types[i].Name == name){
 				ret = GAME.UTIL.ObjectClone(this.Types[i]);
 				ret.__proto__ = this.Proto;
@@ -179,14 +291,14 @@ GAME.ADVENTURERS = {
 			}
 		};
 		if(!ret) return null;
-		var obj = {};
+		let obj = {};
 		obj.__proto__ = ret;
 		return obj;
 	},
 	create: function(){
-		var hero = this.getRandomType();
+		let hero = this.getRandomType();
 		hero.init();
-		GAME.Tavern.Adventurers.push(hero);
+		GAME.Tavern.Adventurers.add(hero);
 		GAME.Tavern.RedrawTable();
 	}
 };
@@ -197,18 +309,19 @@ GAME.PARTY = {
 	},
 	Proto: {
 		get Skill(){
-			for (var i = 0, skill = 0; i < this.Heros.length; i++) {
+			let skill = 0;
+			for (let i = 0; i < this.Heros.length; i++) {
 				skill += this.Heros[i].Skill;
 			};
 			return skill;
 		},
 		Return: function(success){
-			var loot = this.Loot / this.Heros.length;
-			for (var i = 0; i < this.Heros.length; i++) {
+			let loot = this.Loot / this.Heros.length;
+			for (let i = 0; i < this.Heros.length; i++) {
 				this.Heros[i].Gold += loot;
 				this.Heros[i].Fame += loot/100;
 				this.Heros[i].Fame += success;
-				GAME.Tavern.Adventurers.push(this.Heros[i]);
+				GAME.Tavern.Adventurers.add(this.Heros[i]);
 			};
 		}
 	}
@@ -239,36 +352,37 @@ GAME.MONSTERS = {
 	],
 	Proto: {
 		init: function(size){
-			var count = Math.round(size * GAME.RAND.getComplex(this._count));
-			for (var i = 0; i < count; i++) {
+			let count = Math.round(size * GAME.RAND.getComplex(this._count));
+			for (let i = 0; i < count; i++) {
 				this.addIndividual();
 			};
 			this.Count = this.Individuals.length;
 			this.Treasure = this.Gold * this._treasure;
 		},
 		addIndividual: function(){
-			var ind = {};
+			let ind = {};
 			ind.Danger = GAME.RAND.getComplex(this._danger);
 			ind.Gold = GAME.RAND.getComplex(this._gold) * ind.Danger;
 			this.Individuals.push(ind);
 		},
 		get Danger(){
-			var danger = 0;
-			for (var i = 0; i < this.Individuals.length; i++) {
+			let danger = 0;
+			for (let i = 0; i < this.Individuals.length; i++) {
 				danger += this.Individuals[i].Danger;
 			};
 			return danger;
 		},
 		get Gold(){
-			var gold = 0;
-			for (var i = 0; i < this.Individuals.length; i++) {
+			let gold = 0;
+			for (let i = 0; i < this.Individuals.length; i++) {
 				gold += this.Individuals[i].Gold;
 			};
 			return gold;
 		},
 	},
 	getType: function(name){
-		for (var i = 0, ret; i < this.Types.length; i++) {
+		let ret;
+		for (let i = 0; i < this.Types.length; i++) {
 			if(this.Types[i].Name == name){
 				ret = GAME.UTIL.ObjectClone(this.Types[i]);
 				ret.__proto__ = this.Proto;
@@ -276,7 +390,7 @@ GAME.MONSTERS = {
 			}
 		};
 		if(!ret) return null;
-		var obj = {
+		let obj = {
 			Individuals: [],
 		};
 		obj.__proto__ = ret;
@@ -317,25 +431,39 @@ GAME.LAIRS = {
 	Proto: {
 		init: function(){
 			this.Size = Math.round(GAME.RAND.getComplex(this._size));
-			var monsters = [];
-			for (var i = 0; i < this._monsters.length; i++) {
-				for (var j = 0; j < this._monsters[i].Chance; j++) {
+			let monsters = [];
+			for (let i = 0; i < this._monsters.length; i++) {
+				for (let j = 0; j < this._monsters[i].Chance; j++) {
 					monsters.push(this._monsters[i].Types);
 				};
 			};
 			this.Type = GAME.UTIL.RandomArray(monsters);
 		},
 		get Danger(){
-			var danger = 0;
-			for (var i = 0; i < this.Monsters.length; i++) {
+			let danger = 0;
+			for (let i = 0; i < this.Monsters.length; i++) {
 				if(this.Monsters[i].Danger)
 					danger += this.Monsters[i].Danger;
 			};
 			return Math.round(danger);
 		},
+		get MonsterType(){
+			let type = '';
+			for(let mon of this.Monsters){
+				type += mon.Name + ',';
+			}
+			return type;
+		},
+		get MonsterCount(){
+			let count = 0;
+			for(let mon of this.Monsters){
+				count += mon.Count;
+			}
+			return count;
+		},
 		Conflict: function(){
 			if(this.Party === null) return;
-			var pow = this.Party.Skill() / this.Danger;
+			let pow = this.Party.Skill() / this.Danger;
 
 			this.Party.Return(false);
 			this.Party = null;
@@ -351,32 +479,34 @@ GAME.LAIRS = {
 		}
 	},
 	create: function(newSize){
-		this.getRandomType();
+		let newLair = this.getRandomType();
 		newLair.init();
 
 		if(newSize) newLair.Size = newSize;
 
-		var monsters = [];
-		for(var key in newLair.Type){
-			var monster = GAME.MONSTERS.getType(key);
+		let monsters = [];
+		for(let key in newLair.Type){
+			let monster = GAME.MONSTERS.getType(key);
 			monster.init(newLair.Size * newLair.Type[key]);
 			monsters.push(monster);
 		}
 		newLair.Monsters = monsters;
 
-		GAME.Lairs.push(newLair);
+		GAME.Lairs.add(newLair);
+		this.RedrawTable();
 	},
 	getRandomType: function(){
-		var newLairP = GAME.UTIL.ObjectClone(GAME.UTIL.RandomArray(this.Types));
+		let newLairP = GAME.UTIL.ObjectClone(GAME.UTIL.RandomArray(this.Types));
 		newLairP.__proto__ = this.Proto;
-		newLair = {
+		let newLair = {
 			Party: null
 		};
 		newLair.__proto__ = newLairP;
 		return newLair;
 	},
 	getType: function(name){
-		for (var i = 0, ret; i < this.Types.length; i++) {
+		let ret;
+		for (let i = 0; i < this.Types.length; i++) {
 			if(this.Types[i].Name == name){
 				ret = GAME.UTIL.ObjectClone(this.Types[i]);
 				ret.__proto__ = this.Proto;
@@ -384,10 +514,22 @@ GAME.LAIRS = {
 			}
 		};
 		if(!ret) return null;
-		var obj = {
+		let obj = {
 			Party: null
 		};
 		obj.__proto__ = ret;
 		return obj;
+	},
+	RedrawTable: function(){
+		let LA = $('#Lairs').empty();
+		for (let lair of GAME.Lairs) {
+			let tr = $(document.createElement('tr'));
+			let td = $(document.createElement('td')).text(lair.MonsterType).appendTo(tr);
+			td = $(document.createElement('td')).text(lair.Size).appendTo(tr);
+			td = $(document.createElement('td')).text(lair.MonsterCount).appendTo(tr);
+			td = $(document.createElement('td')).text(lair.Danger).appendTo(tr);
+			tr.appendTo(LA);
+			tr[0].Lair = lair;
+		};
 	},
 };

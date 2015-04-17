@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+<script type="text/javascript">
+'use strict';
+function f() {
+  {
+    let x = 'outer';
+    console.log(x);
+    {
+      // okay, block scoped name
+      //const x = "sneaky";
+      // error, const
+      let x = "foo";
+      console.log(x);
+    }
+    // error, already declared in block
+    //let x = "inner";
+    console.log(x);
+  }
+}
+
+f();
+
+</script>
+</head>
+<body>
+
+</body>
+</html>

@@ -13,9 +13,11 @@
 	<script>
 GAME = {
 	Lairs: [],
+	Parties: [],
 };
 GAME.Tavern = {
 	Adventurers: [],
+	Party: null,
 };
 GAME.UTIL = {
 	RandomArray: function(arr){
@@ -188,7 +190,7 @@ GAME.PARTY = {
 		Loot: 0,
 	},
 	Proto: {
-		Skill: function(){
+		get Skill(){
 			for (var i = 0, skill = 0; i < this.Heros.length; i++) {
 				skill += this.Heros[i].Skill;
 			};
@@ -236,7 +238,7 @@ GAME.MONSTERS = {
 				this.addIndividual();
 			};
 			this.Count = this.Individuals.length;
-			this.Treasure = this.Gold() * this._treasure;
+			this.Treasure = this.Gold * this._treasure;
 		},
 		addIndividual: function(){
 			var ind = {};
@@ -244,14 +246,14 @@ GAME.MONSTERS = {
 			ind.Gold = GAME.RAND.getComplex(this._gold) * ind.Danger;
 			this.Individuals.push(ind);
 		},
-		Danger: function(){
+		get Danger(){
 			var danger = 0;
 			for (var i = 0; i < this.Individuals.length; i++) {
 				danger += this.Individuals[i].Danger;
 			};
 			return danger;
 		},
-		Gold: function(){
+		get Gold(){
 			var gold = 0;
 			for (var i = 0; i < this.Individuals.length; i++) {
 				gold += this.Individuals[i].Gold;
@@ -317,17 +319,17 @@ GAME.LAIRS = {
 			};
 			this.Type = GAME.UTIL.RandomArray(monsters);
 		},
-		Danger: function(){
+		get Danger(){
 			var danger = 0;
 			for (var i = 0; i < this.Monsters.length; i++) {
 				if(this.Monsters[i].Danger)
-					danger += this.Monsters[i].Danger();
+					danger += this.Monsters[i].Danger;
 			};
 			return Math.round(danger);
 		},
 		Conflict: function(){
 			if(this.Party === null) return;
-			var pow = this.Party.Skill() / this.Danger();
+			var pow = this.Party.Skill() / this.Danger;
 
 			this.Party.Return(false);
 			this.Party = null;
@@ -383,6 +385,7 @@ GAME.LAIRS = {
 		return obj;
 	},
 };
+
 $(function(){
 	console.log('init');
 	GAME.RAND.setSeed(Date.now());
@@ -390,8 +393,7 @@ $(function(){
 	GAME.ADVENTURERS.create();
 	console.log(GAME);
 });
-	</script>
-
+</script>
 </head>
 <body>
 
