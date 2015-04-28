@@ -69,6 +69,8 @@ GAME.ENGINE.RAND = (function(){
 
 	var getComplex = function(params) {
 		var ret = 0;
+		if(params.Dices)
+			ret = rollDices(params.Dices);
 		if(params.Mean && params.Dev) {
 			ret = getNormal(params.Mean, params.Dev);
 			if(params.Min) ret = Math.max(ret, params.Min);
@@ -76,10 +78,30 @@ GAME.ENGINE.RAND = (function(){
 		} else if(params.Min && params.Max) {
 			ret = getUniformInt(params.Min, params.Max);
 		}
-		if(params.add) {
-			ret + params.add;
+		if(params.Add) {
+			ret += params.Add;
+		}
+		if(params.Round){
+			ret = Math.round(ret);
 		}
 		return ret;
+	};
+
+	var rollDices = function(dices){
+		var REx = /(\d*)?d(\d*)((?:\+|-)(?:\d*))?/gi;
+		var ret = REx.exec(dices);
+
+		if(!ret) return false;
+
+		var rolls, sum;
+		rolls = ret[1] ? parseInt(ret[1]) : 1;
+		sum = ret[3] ? parseInt(ret[3]) : 0;
+
+		for (var i = 0; i < rolls; i++) {
+			sum += getUniformInt(1, ret[2]);
+		};
+
+		return sum;
 	};
 
 	setSeed(Date.now());
@@ -93,7 +115,8 @@ GAME.ENGINE.RAND = (function(){
 		getUniformInt: getUniformInt,
 		getPercentage: getPercentage,
 		getNormal: getNormal,
-		getComplex: getComplex
+		getComplex: getComplex,
+		rollDices: rollDices
 	};
 })();
 
@@ -101,15 +124,19 @@ GAME.ENGINE.HEROS = (function(){
 	var Types = {
 		Adventurer: {
 			Name: 'Adventurer',
+			Attributes: ['Strength', 'Dexterity', 'Constitution', 'Wisdom'],
 		},
 		Mage: {
 			Name: 'Mage',
+			Attributes: ['Wisdom', 'Dexterity', 'Constitution', 'Strength'],
 		},
-		Rouge: {
-			Name: 'Rouge',
+		Rogue: {
+			Name: 'Rogue',
+			Attributes: ['Dexterity', 'Strength', 'Constitution', 'Wisdom'],
 		},
 		Warrior: {
 			Name: 'Warrior',
+			Attributes: ['Strength', 'Constitution', 'Dexterity', 'Wisdom'],
 		}
 	};
 	var TypesNames = Object.keys(Types);
@@ -124,9 +151,59 @@ GAME.ENGINE.HEROS = (function(){
 	};
 	var create = function(type, options){
 		var hero = Object.create(Proto);
+		var attributes = ['3d6', '3d6', '3d6', '3d6'];
 
 		hero.Kind = Types[type].Name;
+		for (var i = 0, l = attributes.length; i < l; i++) {
+			attributes[i] = GAME.ENGINE.RAND.rollDices(attributes[i]);
+		};
+		attributes.sort(function(a, b){return b-a});
+		for (var key of Types[type].Attributes){
+			hero[key] = attributes.shift();
+		}
+
 		return hero;
+	};
+
+	return {
+		createRandom: createRandom,
+		create: create
+	};
+})();
+
+GAME.ENGINE.MONSTERS = (function(){
+	var Types = {
+		Generic: {
+			Name: 'Generic Monster',
+			Attributes: ['Strength', 'Constitution', 'Dexterity', 'Wisdom'],
+		}
+	};
+
+	var Proto = {};
+	var TypesNames = Object.keys(Types);
+
+	var createRandom = function(options)	{
+		var type = TypesNames.randomElement();
+		return this.create(type, options);
+	};
+	var create = function(type, options){
+		options = options || {};
+		var monster = Object.create(Proto);
+		var attributes = ['3d6', '3d6', '3d6', '3d6'];
+
+		monster.Name = Types[type].Name;
+		for (var i = 0, l = attributes.length; i < l; i++) {
+			attributes[i] = GAME.ENGINE.RAND.rollDices(attributes[i]);
+		};
+		attributes.sort(function(a, b){return b-a});
+		for (var key of Types[type].Attributes){
+			monster[key] = attributes.shift();
+		}
+
+		for(var key in options)
+			monster[key] = options[key];
+
+		return monster;
 	};
 
 	return {
@@ -137,14 +214,18 @@ GAME.ENGINE.HEROS = (function(){
 
 GAME.ENGINE.LAIRS = (function(){
 	var Types = {
-		Village: {
-			what: 'that',
+		Generic: {
+			Name: 'Generic Lair',
+			Size: {Min: 1, Mean: 2, Dev: 1},
+			Monsters: [{Type: 'Generic', Count: {Mean: 6, Dev: 2, Add: 5, Round: true}}]
 		},
 	};
 	var TypesNames = Object.keys(Types);
 
 	var Proto = {
-		lol:'lol'
+		get Count(){
+			return this.Monsters.length;
+		},
 	};
 
 	var createRandom = function(options)	{
@@ -152,11 +233,21 @@ GAME.ENGINE.LAIRS = (function(){
 		return this.create(type, options);
 	};
 	var create = function(type, options){
-		options = options || {a: 'ala'};
+		options = options || {};
 		var lair = Object.create(Proto);
 
-		lair.a = options.a;
-		lair.what = Types[type].what;
+		lair.Name = Types[type].Name;
+
+		lair.Size = options.Size || GAME.ENGINE.RAND.getComplex(Types[type].Size);
+		lair.Monsters = [];
+		for (var monster of Types[type].Monsters){
+			var count = GAME.ENGINE.RAND.getComplex(monster.Count);
+			count *= lair.Size;
+			for (var i = 0; i < count; i++) {
+				lair.Monsters.push(GAME.ENGINE.MONSTERS.create(monster.Type));
+			};
+		}
+
 		return lair;
 	};
 
@@ -164,11 +255,11 @@ GAME.ENGINE.LAIRS = (function(){
 		createRandom: createRandom,
 		create: create
 	};
-
 })();
 
 
 
 console.log(GAME);
-console.log([GAME.ENGINE.LAIRS.createRandom()]);
-console.log([GAME.ENGINE.HEROS.createRandom()]);
+console.log(GAME.ENGINE.HEROS.createRandom());
+console.log(GAME.ENGINE.LAIRS.createRandom());
+console.log(GAME.ENGINE.LAIRS.createRandom({Size: 1}));
