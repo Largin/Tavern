@@ -122,21 +122,21 @@ GAME.ENGINE.RAND = (function(){
 
 GAME.ENGINE.HEROS = (function(){
 	var Types = {
-		Adventurer: {
+		/*Adventurer: {
 			Name: 'Adventurer',
-			Attributes: ['Strength', 'Dexterity', 'Constitution', 'Wisdom'],
-		},
+			Attributes: ['Strength', 'Constitution', 'Dexterity', 'Intelligence', 'Wisdom', 'Charisma'],
+		},*/
 		Mage: {
 			Name: 'Mage',
-			Attributes: ['Wisdom', 'Dexterity', 'Constitution', 'Strength'],
+			Attributes: ['Intelligence', 'Wisdom', 'Constitution', 'Charisma', 'Dexterity', 'Strength'],
 		},
 		Rogue: {
 			Name: 'Rogue',
-			Attributes: ['Dexterity', 'Strength', 'Constitution', 'Wisdom'],
+			Attributes: ['Dexterity', 'Strength', 'Constitution', 'Charisma', 'Intelligence', 'Wisdom',],
 		},
 		Warrior: {
 			Name: 'Warrior',
-			Attributes: ['Strength', 'Constitution', 'Dexterity', 'Wisdom'],
+			Attributes: ['Strength', 'Constitution', 'Dexterity', 'Intelligence', 'Wisdom', 'Charisma'],
 		}
 	};
 	var TypesNames = Object.keys(Types);
@@ -151,7 +151,7 @@ GAME.ENGINE.HEROS = (function(){
 	};
 	var create = function(type, options){
 		var hero = Object.create(Proto);
-		var attributes = ['3d6', '3d6', '3d6', '3d6'];
+		var attributes = ['3d6', '3d6', '3d6', '3d6', '3d6', '3d6'];
 
 		hero.Kind = Types[type].Name;
 		for (var i = 0, l = attributes.length; i < l; i++) {
@@ -263,3 +263,101 @@ console.log(GAME);
 console.log(GAME.ENGINE.HEROS.createRandom());
 console.log(GAME.ENGINE.LAIRS.createRandom());
 console.log(GAME.ENGINE.LAIRS.createRandom({Size: 1}));
+
+
+GAME.ENGINE.CHARACTER = (function(
+	var Abilities = ['Strength', 'Constitution', 'Dexterity', 'Intelligence', 'Wisdom', 'Charisma'];
+	//var Races = ['Human', 'Dwarf', 'Elf', 'Gnome', 'Half-Elf', 'Half-Orc', 'Halfling'];
+	var Races = {
+		Human: {
+			Size: 'Medium',
+			Speed: 30,
+			ExtraFeat: 1,
+			ExtraSkill: 4,
+			ExtraSkillLvl: 1,
+		},
+		Dwarf: {
+			Abilities: {Constitution: 2, Charisma: -2},
+			Size: 'Medium',
+			Speed: 20,
+			SpeedFree: true,
+			Vision: 'Darkvision',
+
+			Weapon Familiarity: ['dwarven waraxe', 'dwarven urgrosh'],
+			Stonecunning: {Search: 2}, // stonework
+			Stability: {Ability: 4}, // resist being bull rushed or tripped when standing
+			SThrows: {Poison: 2, Spells: 2},
+			ARolls: {Orcs: 1, Goblins: 1},
+			DRolls: {Giant: 4},
+			Check: {Appraise: 2, Craft: 2 /*Stone, metal*/},
+			FClass: ['Fighter']
+		},
+		Elf: {
+			Abilities: {Dexterity: 2, Constitution: -2},
+			Size: 'Medium',
+			Speed: 20,
+			Vision: 'Low-light vision',
+
+			Weapon Proficiency: ['longsword', 'rapier', 'longbow', 'shortbow'],
+			SThrows: {Sleep: 'immunity', Enchantment: 2},
+			Check: {Listen: 2, Search: 2, Spot: 2},
+			FClass: ['Wizard']
+		},
+		Gnome: {
+			Abilities: {Constitution: 2, Strength: -2},
+			Size: 'Small',
+			Speed: 20,
+			Vision: 'Low-light vision',
+
+			Weapon Familiarity: ['gnome hooked hammer'],
+			SThrows: {Illusion: 2},	/*+1 Difficulty Class*/
+			ARolls: {Kobolds: 1, Goblins: 1},
+			DRolls: {Giant: 4},
+			Check: {Listen: 2, Craft: 2 /*Alchemy*/},
+			/*Spell-Like Abilities: 1/day—speak with animals (burrowing mammal only, duration 1 minute). A gnome with a Charisma score of at least 10 also has the following spell-like abilities: 1/day—dancing lights, ghost sound, prestidigitation. Caster level 1st; save DC 10 + gnome’s Cha modifier + spell level.*/
+			FClass: ['Bard']
+		},
+		Halfling: {
+			Abilities: {Dexterity: 2, Strength: -2},
+			Size: 'Small',
+			Speed: 20,
+
+			Check: {Listen: 2, Jumb: 2, Climb: 2, Move Silently: 2},
+			SThrows: {All: 1, Fear: 2},
+			ARolls: {Thrown: 1, Sling: 1},
+			FClass: ['Rogue']
+		}
+/*
+Half-Elves
+Also see the Half-Elf monster listing.
+
+Medium: As Medium creatures, half-elves have no special bonuses or penalties due to their size.
+Half-elf base land speed is 30 feet.
+Immunity to sleep spells and similar magical effects, and a +2 racial bonus on saving throws against enchantment spells or effects.
+Low-Light Vision: A half-elf can see twice as far as a human in starlight, moonlight, torchlight, and similar conditions of poor illumination. She retains the ability to distinguish color and detail under these conditions.
++1 racial bonus on Listen, Search, and Spot checks.
++2 racial bonus on Diplomacy and Gather Information checks.
+Elven Blood: For all effects related to race, a half-elf is considered an elf.
+Automatic Languages: Common and Elven. Bonus Languages: Any (other than secret languages, such as Druidic).
+Favored Class: Any. When determining whether a multiclass half-elf takes an experience point penalty, her highest-level class does not count.
+
+Half-Orcs
+Also see the Half-Orc monster listing.
+
++2 Strength, -2 Intelligence, -2 Charisma.
+
+A half-orc’s starting Intelligence score is always at least 3. If this adjustment would lower the character’s score to 1 or 2, his score is nevertheless 3.
+
+Medium: As Medium creatures, half-orcs have no special bonuses or penalties due to their size.
+Half-orc base land speed is 30 feet.
+Darkvision: Half-orcs (and orcs) can see in the dark up to 60 feet. Darkvision is black and white only, but it is otherwise like normal sight, and half-orcs can function just fine with no light at all.
+Orc Blood: For all effects related to race, a half-orc is considered an orc.
+Automatic Languages: Common and Orc. Bonus Languages: Draconic, Giant, Gnoll, Goblin, and Abyssal.
+Favored Class: Barbarian. A multiclass half-orc’s barbarian class does not count when determining whether he takes an experience point penalty.
+*/
+	};
+
+	var Skills = {
+
+	};
+))();
